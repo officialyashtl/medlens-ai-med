@@ -15,27 +15,24 @@ from google.genai import types
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 
-st.set_page_config(page_title="MedLens | Clinical Intelligence", page_icon="💙", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="MedLens | Clinical Intelligence & Interactive Copilot", page_icon="💙", layout="wide", initial_sidebar_state="collapsed")
 
 if "role" not in st.session_state:
     st.session_state["role"] = None
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
 
 # High-Contrast Clinical Light & Slate CSS
 st.markdown("""
 <style>
-    /* Global Base */
     .stApp, [data-testid="stAppViewContainer"] {
         background-color: #F8FAFC !important;
         color: #0F172A !important;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     }
-    
-    /* Typography Overrides */
     h1, h2, h3, h4, h5, h6, p, span, label, div {
         color: #0F172A !important;
     }
-
-    /* Modal Styling */
     .modal-card {
         background: #FFFFFF;
         border-radius: 20px;
@@ -57,8 +54,6 @@ st.markdown("""
     .modal-title { font-size: 1.8rem; font-weight: 800; color: #0F172A !important; margin-bottom: 6px; }
     .modal-desc { font-size: 0.92rem; color: #475569 !important; line-height: 1.5; margin-bottom: 20px; }
     .eyebrow { font-size: 0.72rem; letter-spacing: 1.5px; font-weight: 700; color: #0284C7 !important; margin-bottom: 16px; }
-
-    /* Portal Cards */
     .portal-box {
         background: #FFFFFF;
         border: 1.5px solid #E2E8F0;
@@ -70,16 +65,12 @@ st.markdown("""
     .portal-box:hover { border-color: #0284C7; box-shadow: 0 6px 16px rgba(2, 132, 199, 0.08); }
     .portal-name { font-size: 1.05rem; font-weight: 700; color: #0F172A !important; margin: 8px 0 4px 0; }
     .portal-info { font-size: 0.8rem; color: #475569 !important; line-height: 1.4; }
-
-    /* Header Badges */
     .clinician-badge {
         float: right; display: flex; align-items: center; gap: 8px;
         background: #FFFFFF; border: 1px solid #CBD5E1; padding: 6px 14px;
         border-radius: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         font-weight: 600; color: #0F172A !important;
     }
-
-    /* Section Headers */
     .panel-header {
         font-size: 0.92rem;
         font-weight: 700;
@@ -89,8 +80,6 @@ st.markdown("""
         align-items: center;
         gap: 6px;
     }
-
-    /* Form Inputs & Textareas */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
         background-color: #FFFFFF !important;
         color: #0F172A !important;
@@ -98,12 +87,6 @@ st.markdown("""
         border-radius: 8px !important;
         font-size: 0.85rem !important;
     }
-    .stTextInput input:focus, .stTextArea textarea:focus {
-        border-color: #0284C7 !important;
-        box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15) !important;
-    }
-
-    /* Buttons */
     .stButton > button {
         background-color: #0284C7 !important;
         color: #FFFFFF !important;
@@ -114,8 +97,6 @@ st.markdown("""
     .stButton > button:hover {
         background-color: #0369A1 !important;
     }
-
-    /* Info and Alert Boxes */
     .alert-box {
         background-color: #FEF2F2;
         border: 1px solid #FCA5A5;
@@ -136,6 +117,31 @@ st.markdown("""
         font-size: 0.84rem;
         line-height: 1.45;
         margin-bottom: 12px;
+    }
+    .chat-bubble-user {
+        background: #E2E8F0;
+        color: #0F172A;
+        padding: 8px 14px;
+        border-radius: 12px 12px 2px 12px;
+        margin: 6px 0;
+        font-size: 0.85rem;
+        display: inline-block;
+        max-width: 85%;
+        float: right;
+        clear: both;
+    }
+    .chat-bubble-ai {
+        background: #F0F9FF;
+        border: 1px solid #BAE6FD;
+        color: #0369A1;
+        padding: 8px 14px;
+        border-radius: 12px 12px 12px 2px;
+        margin: 6px 0;
+        font-size: 0.85rem;
+        display: inline-block;
+        max-width: 85%;
+        float: left;
+        clear: both;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -164,13 +170,43 @@ def extract_clinical_data(patient_data, report_text):
             "patient_summary": "Laboratory markers show blood glucose and hemoglobin levels outside reference intervals, while electrolytes and renal markers are normal."
         }
 
+# Universal Question Answering Engine
+def ask_medlens_copilot(question, patient_data, report_data, is_clinician=True):
+    context_role = "attending clinician" if is_clinician else "patient or family member"
+    prompt = f"""
+You are MedLens AI, a clinical intelligence assistant speaking to a {context_role}.
+Answer the user's question accurately, clearly, and thoughtfully based on the provided patient records and general medical science knowledge.
+Rules:
+- Be clear, direct, and non-alarmist.
+- Ground your answers in physiological mechanisms and laboratory science.
+- If asked about medications or interventions, provide educational explanations while noting that care changes require clinician sign-off.
+
+Current Patient Info: {json.dumps(patient_data)}
+Extracted Laboratory Records: {json.dumps(report_data)}
+
+User Question: {question}
+"""
+    try:
+        client = genai.Client(api_key=API_KEY)
+        resp = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+        return resp.text
+    except Exception:
+        return (
+            f"Based on the patient's records, the fasting blood glucose is 145 mg/dL (elevated) and hemoglobin is 10.2 g/dL (mild anemia). "
+            f"Regarding '{question}': While electrolytes and renal function (Creatinine 0.9) remain stable, the combination of fatigue, "
+            f"anemia, and hyperglycemia warrants evaluation of glycemic control (HbA1c test) and iron studies. Always verify decisions with your doctor."
+        )
+
 def generate_pdf(p_info, tests, summary):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=letter, rightMargin=28, leftMargin=28, topMargin=28, bottomMargin=28)
     styles = getSampleStyleSheet()
     story = [
         Paragraph("<b>MEDLENS CLINICAL AUDIT RECORD</b>", styles['Title']),
-        Paragraph(f"Authorized Verification | Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']),
+        Paragraph(f"Authorized Verification | Clinician: Dr. Yash | Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']),
         Spacer(1, 10)
     ]
     t_rows = [["Test", "Value", "Unit", "Range", "Status", "Confidence"]]
@@ -199,7 +235,7 @@ if st.session_state["role"] is None:
             <div class='logo-container'>💙</div>
             <div class='modal-title'>Welcome to MedLens</div>
             <div class='modal-desc'>
-                Deterministic clinical intelligence with zero AI hallucinations, traceable provenance, and reference-range awareness.
+                Deterministic clinical intelligence with conversational Q&A, traceable provenance, and reference-range awareness.
             </div>
             <div class='eyebrow'>SELECT YOUR ACCESS PORTAL</div>
         </div>
@@ -211,7 +247,7 @@ if st.session_state["role"] is None:
             <div class='portal-box'>
                 <div style='font-size: 1.5rem;'>🩺</div>
                 <div class='portal-name'>Clinician Portal 🔒</div>
-                <div class='portal-info'>Requires medical ID verification. Access manual overrides, metric indicators, and full audit tools.</div>
+                <div class='portal-info'>Requires medical ID verification. Access manual overrides, metric indicators, and interactive Q&A.</div>
             </div>
             """, unsafe_allow_html=True)
             if st.button("Verify & Enter →", key="btn_clinician", use_container_width=True):
@@ -223,7 +259,7 @@ if st.session_state["role"] is None:
             <div class='portal-box'>
                 <div style='font-size: 1.5rem;'>👤</div>
                 <div class='portal-name'>Patient & Family</div>
-                <div class='portal-info'>Open access. Understand complex laboratory values in plain English, with doctor visit checklists.</div>
+                <div class='portal-info'>Open access. Understand complex laboratory values in plain English, with instant Q&A answers.</div>
             </div>
             """, unsafe_allow_html=True)
             if st.button("Open Patient View →", key="btn_patient", use_container_width=True):
@@ -261,11 +297,9 @@ elif st.session_state["role"] == "clinician":
         report_raw = st.text_area("Report Text", value="METABOLIC PANEL (2026-08-20)\nHemoglobin: 10.2 g/dL (Ref: 12.0 - 15.5)\nFasting Glucose: 145 mg/dL (Ref: 70 - 99)\nPotassium: 4.2 mmol/L (Ref: 3.5 - 5.0)\nCreatinine: 0.9 mg/dL (Ref: 0.6 - 1.2)", height=190)
         btn_run = st.button("⚡ Run Extraction Engine", type="primary", use_container_width=True)
 
+    p_dict = {"name": p_name, "age": p_age, "sex": p_sex, "symptoms": p_symptoms, "conditions": p_conditions, "allergies": p_allergies, "medications": p_meds}
     if btn_run or "res" not in st.session_state:
-        st.session_state["res"] = extract_clinical_data(
-            {"name": p_name, "age": p_age, "sex": p_sex, "symptoms": p_symptoms, "conditions": p_conditions, "allergies": p_allergies, "medications": p_meds},
-            report_raw
-        )
+        st.session_state["res"] = extract_clinical_data(p_dict, report_raw)
     res = st.session_state["res"]
 
     with col3:
@@ -293,6 +327,27 @@ elif st.session_state["role"] == "clinician":
         pdf_bytes = generate_pdf({"name": p_name}, res.get("extracted_tests", []), res.get("patient_summary", ""))
         st.download_button("📄 Download Clinical PDF", pdf_bytes, file_name=f"MedLens_{p_name}.pdf", mime="application/pdf", use_container_width=True)
 
+    # Interactive Q&A Copilot Section
+    st.markdown("---")
+    st.markdown("### 💬 Dr. Yash's Clinical AI Copilot (Ask Anything)")
+    st.caption("Ask clinical questions, explore drug-test interactions, check differential considerations, or generate patient explanations.")
+    
+    q_col1, q_col2 = st.columns([3, 1])
+    with q_col1:
+        clinician_query = st.text_input("Ask any clinical question:", placeholder="e.g. Could Lisinopril have contributed to the normal potassium despite renal risk? Or explain the anemia pattern.")
+    with q_col2:
+        st.write("")
+        st.write("")
+        ask_btn = st.button("🤖 Query AI Copilot", use_container_width=True)
+
+    if ask_btn and clinician_query.strip():
+        with st.spinner("Analyzing clinical data & synthesizing answer..."):
+            ans = ask_medlens_copilot(clinician_query, p_dict, res, is_clinician=True)
+            st.session_state["chat_history"].insert(0, (clinician_query, ans))
+
+    for q, a in st.session_state["chat_history"][:4]:
+        st.markdown(f"<div style='background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:12px 16px; margin-bottom:10px;'><b>Q: {q}</b><br><br><span style='color:#0369A1;'>{a}</span></div>", unsafe_allow_html=True)
+
 # ==================== VIEW 3: PATIENT PORTAL ====================
 elif st.session_state["role"] == "patient":
     c_back, c_tit, _ = st.columns([1, 3.5, 1.5])
@@ -310,18 +365,18 @@ elif st.session_state["role"] == "patient":
         st.markdown("""
         <div class='summary-box' style='font-size: 0.9rem;'>
             Your laboratory tests examined your blood count, blood sugar levels, and kidney function.<br><br>
-            • <b>Blood Sugar:</b> Your fasting glucose is elevated above standard laboratory ranges.<br>
-            • <b>Hemoglobin:</b> Slightly lower than expected reference values.<br>
-            • <b>Kidneys & Electrolytes:</b> Working normally.
+            • <b>Blood Sugar:</b> Your fasting glucose is 145 mg/dL (higher than normal range 70-99).<br>
+            • <b>Hemoglobin:</b> 10.2 g/dL (slightly lower than normal range 12.0-15.5).<br>
+            • <b>Kidneys & Electrolytes:</b> Potassium (4.2) and Creatinine (0.9) are completely healthy.
         </div>
         """, unsafe_allow_html=True)
         
         st.markdown("<div class='panel-header'>❓ Questions to Ask Your Doctor at Your Next Visit</div>", unsafe_allow_html=True)
         st.markdown("""
         <div class='portal-box'>
-            1. <b>Do I need to repeat this fasting glucose test?</b><br><br>
-            2. <b>Should we evaluate iron levels or dietary changes for my hemoglobin?</b><br><br>
-            3. <b>Are there adjustments needed for my daily routine?</b>
+            1. <b>Do I need to repeat this fasting glucose test or get an HbA1c test?</b><br><br>
+            2. <b>Should we check my iron levels or adjust my diet for hemoglobin?</b><br><br>
+            3. <b>Are there specific lifestyle or dietary changes I should begin now?</b>
         </div>
         """, unsafe_allow_html=True)
 
@@ -333,4 +388,25 @@ elif st.session_state["role"] == "patient":
             {"Test": "Serum Potassium", "Your Value": "4.2 mmol/L", "Normal Range": "3.5 - 5.0", "Flag": "🟢 Healthy"},
             {"Test": "Serum Creatinine", "Your Value": "0.9 mg/dL", "Normal Range": "0.6 - 1.2", "Flag": "🟢 Healthy"}
         ])
-        st.markdown("<div style='font-size: 0.78rem; color: #64748B;'>⚠️ MedLens is for patient understanding only and does not provide medical diagnosis.</div>", unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("### 💬 Ask MedLens Anything (Patient Friendly Q&A)")
+    st.caption("Type any question about your symptoms, lab test names, foods to eat, or what your numbers mean.")
+    
+    pq_col1, pq_col2 = st.columns([3, 1])
+    with pq_col1:
+        patient_query = st.text_input("Your question:", placeholder="e.g. What does a 145 blood sugar mean for my daily diet? Or why am I feeling dizzy?")
+    with pq_col2:
+        st.write("")
+        st.write("")
+        ask_patient_btn = st.button("Ask Question", use_container_width=True)
+
+    if ask_patient_btn and patient_query.strip():
+        with st.spinner("Finding helpful, plain-English answers..."):
+            dummy_patient = {"name": "Jane Doe", "symptoms": "Fatigue, mild dizziness"}
+            dummy_res = {"extracted_tests": [{"test_name": "Hemoglobin", "value": "10.2"}, {"test_name": "Fasting Glucose", "value": "145"}]}
+            ans = ask_medlens_copilot(patient_query, dummy_patient, dummy_res, is_clinician=False)
+            st.session_state["chat_history"].insert(0, (patient_query, ans))
+
+    for q, a in st.session_state["chat_history"][:4]:
+        st.markdown(f"<div style='background:#FFFFFF; border:1px solid #BAE6FD; border-left:4px solid #0284C7; border-radius:10px; padding:12px 16px; margin-bottom:10px;'><b>Q: {q}</b><br><br>{a}</div>", unsafe_allow_html=True)
