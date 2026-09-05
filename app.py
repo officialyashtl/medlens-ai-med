@@ -14,7 +14,7 @@ from google import genai
 from google.genai import types
 
 load_dotenv()
-DEFAULT_KEY = os.getenv("GEMINI_API_KEY", "")
+API_KEY = os.getenv("GEMINI_API_KEY")
 
 st.set_page_config(
     page_title="MedLens | Clinician Command Portal",
@@ -204,7 +204,7 @@ def render_centric_loader(task_text="Evaluating Clinical Data", target_patient="
     holder.empty()
 
 # Extraction Engine
-def extract_clinical_data(patient_data, report_text, key):
+def extract_clinical_data(patient_data, report_text):
     prompt = f"""
 Strict clinical data extraction task for attending physician:
 Extract test names, numeric values, units, and strict reference intervals from the source text.
@@ -219,7 +219,7 @@ Output valid JSON:
 }}
 """
     try:
-        client = genai.Client(api_key=key)
+        client = genai.Client(api_key=API_KEY)
         resp = client.models.generate_content(
             model="gemini-2.5-flash", contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json")
@@ -239,7 +239,7 @@ Output valid JSON:
         }
 
 # Symptom & Risk Prediction Engine
-def predict_symptoms_and_risks(condition_input, patient_data, key):
+def predict_symptoms_and_risks(condition_input, patient_data):
     prompt = f"""
 Clinical prediction task for physician:
 Patient Profile: {json.dumps(patient_data)}
@@ -258,7 +258,7 @@ Output JSON:
 }}
 """
     try:
-        client = genai.Client(api_key=key)
+        client = genai.Client(api_key=API_KEY)
         resp = client.models.generate_content(
             model="gemini-2.5-flash", contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json")
@@ -274,7 +274,7 @@ Output JSON:
         }
 
 # Copilot Engine
-def ask_medlens_copilot(query, patient_data, report_data, key):
+def ask_medlens_copilot(query, patient_data, report_data):
     prompt = f"""
 MedLens Clinical Decision Copilot assisting Dr. Yash.
 Query: "{query}"
@@ -283,7 +283,7 @@ Biomarkers: {json.dumps(report_data)}
 Answer comprehensively with clinical decision support rules.
 """
     try:
-        client = genai.Client(api_key=key)
+        client = genai.Client(api_key=API_KEY)
         resp = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
         return resp.text
     except Exception:
@@ -351,17 +351,16 @@ if not st.session_state["authenticated"]:
 
 # ==================== VIEW 2: DOCTOR-CENTRIC WORKSPACE ====================
 else:
-    # Sidebar
+    # Sidebar without any API Key input box
     with st.sidebar:
         st.markdown(f"### 🩺 **{st.session_state['doctor_name']}**")
         st.caption(f"ID: `{st.session_state['doctor_id']}` • Internal Medicine")
-        st.markdown("---")
-        active_api_key = st.text_input("API Key Override", value=DEFAULT_KEY, type="password")
         st.markdown("---")
         st.markdown("#### **Telemetry Status**")
         st.markdown("🟢 `System Online`")
         st.markdown("🔵 `Telemetry: Connected`")
         st.markdown("🔴 `Audit Interceptor: Active`")
+        st.markdown("⚡ `Gemini 2.5 Flash: Active`")
         st.markdown("---")
         if st.button("🚪 Log Out of Station", use_container_width=True):
             st.session_state["authenticated"] = False
@@ -436,7 +435,7 @@ else:
 
     if run_btn or "res" not in st.session_state:
         render_centric_loader("Benchmarking Reference Ranges & Intercepting Red Flags", p_name)
-        st.session_state["res"] = extract_clinical_data(patient_data, report_text, active_api_key)
+        st.session_state["res"] = extract_clinical_data(patient_data, report_text)
 
     res = st.session_state["res"]
 
@@ -499,7 +498,7 @@ else:
 
         if predict_trigger or "pred_data" not in st.session_state:
             render_centric_loader("Mapping Symptom Cascades & Escalation Pathways", p_name)
-            st.session_state["pred_data"] = predict_symptoms_and_risks(sym_query, patient_data, active_api_key)
+            st.session_state["pred_data"] = predict_symptoms_and_risks(sym_query, patient_data)
 
         p_res = st.session_state["pred_data"]
         c_s1, c_s2, c_s3 = st.columns(3, gap="medium")
@@ -543,7 +542,7 @@ else:
 
         if copilot_ask and copilot_q.strip():
             render_centric_loader(f"Generating Decision Support for {p_name}", p_name)
-            ans = ask_medlens_copilot(copilot_q, patient_data, res, active_api_key)
+            ans = ask_medlens_copilot(copilot_q, patient_data, res)
             st.session_state["chat_history"].insert(0, (copilot_q, ans))
 
         for q, a in st.session_state["chat_history"][:5]:
