@@ -133,7 +133,7 @@ with st.sidebar:
     )
     st.markdown("---")
     st.caption("CLINICIAN SESSION")
-    st.markdown("👤 **Dr. Sharma**  \n`Role: Attending Clinician`")
+    st.markdown("👤 **Dr. Yash**  \n`Role: Attending Clinician`")
     st.caption("ENGINE STATUS")
     st.markdown("🟢 `Clinical AI Active`")
 
@@ -145,7 +145,7 @@ with c_right:
     st.markdown("""
     <div class='clinician-badge'>
         <span style="color:#10B981;">●</span>
-        <span style="font-size:0.85rem; color:#F8FAFC;"><b>Dr. Sharma</b> (Clinician)</span>
+        <span style="font-size:0.85rem; color:#F8FAFC;"><b>Dr. Yash</b> (Clinician)</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -209,7 +209,7 @@ def generate_pdf(p_info, tests, summary):
 
 # Main Dashboard View
 if nav == "Dashboard":
-    st.markdown(f"<div class='hero-title'>Good evening, Dr. Sharma</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='hero-title'>Good evening, Dr. Yash</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='hero-sub'>Clinical intelligence overview · Saturday, September 5, 2026</div>", unsafe_allow_html=True)
 
     # 4 Metric Cards
