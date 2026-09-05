@@ -23,22 +23,24 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Authentication Session State
+# Authentication & State Initialization
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 if "doctor_name" not in st.session_state:
     st.session_state["doctor_name"] = "Dr. Yash"
 if "doctor_id" not in st.session_state:
     st.session_state["doctor_id"] = "MD-94821"
+if "patient_name" not in st.session_state:
+    st.session_state["patient_name"] = "Jane Doe"
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
 
-# Doctor-Centric Theme: Whole Green Base with Blue Telemetry and Red Clinical Alerts
+# High-Tech Doctor Theme: Whole Green Base, Blue Telemetry & Red Clinical Alerts
 st.markdown("""
 <style>
     /* Background and Global Color System */
     .stApp, [data-testid="stAppViewContainer"] {
-        background: linear-gradient(180deg, #ECFDF5 0%, #F0FDF4 40%, #FFFFFF 100%) !important;
+        background: linear-gradient(180deg, #ECFDF5 0%, #F0FDF4 35%, #FFFFFF 100%) !important;
         color: #0F172A !important;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     }
@@ -78,7 +80,7 @@ st.markdown("""
         background: #FFFFFF;
         border: 2px solid #10B981;
         border-radius: 12px;
-        padding: 18px 20px;
+        padding: 16px 18px;
         box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
         margin-bottom: 16px;
     }
@@ -86,7 +88,7 @@ st.markdown("""
         background: #FFFFFF;
         border: 2px solid #0284C7;
         border-radius: 12px;
-        padding: 18px 20px;
+        padding: 16px 18px;
         box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08);
         margin-bottom: 16px;
     }
@@ -94,12 +96,12 @@ st.markdown("""
         background: #FFF5F5;
         border: 2px solid #EF4444;
         border-radius: 12px;
-        padding: 18px 20px;
+        padding: 16px 18px;
         box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
         margin-bottom: 16px;
     }
 
-    /* Doctor Identification Badge in Top Nav */
+    /* Top Badges */
     .doctor-cockpit-badge {
         float: right;
         display: flex;
@@ -114,23 +116,36 @@ st.markdown("""
         color: #065F46 !important;
     }
 
-    /* Animated ECG Pulse Loader */
+    /* Centric Screen-Centered ECG Pulse Loader Overlay */
     @keyframes ecg-heartbeat {
-        0% { transform: scale(0.97); opacity: 0.85; }
-        50% { transform: scale(1.02); opacity: 1; filter: drop-shadow(0 0 10px #059669); }
-        100% { transform: scale(0.97); opacity: 0.85; }
+        0% { transform: scale(0.96); opacity: 0.9; }
+        50% { transform: scale(1.03); opacity: 1; filter: drop-shadow(0 0 16px #059669); }
+        100% { transform: scale(0.96); opacity: 0.9; }
     }
-    .ecg-loader-box {
-        background: #ECFDF5;
-        border: 2px dashed #059669;
-        border-radius: 14px;
-        padding: 22px;
+    .centric-loader-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        width: 100vw; height: 100vh;
+        background: rgba(15, 23, 42, 0.55);
+        backdrop-filter: blur(6px);
+        z-index: 99999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .centric-loader-card {
+        background: #FFFFFF;
+        border: 2.5px solid #059669;
+        border-top: 6px solid #059669;
+        border-radius: 20px;
+        padding: 36px 48px;
         text-align: center;
-        animation: ecg-heartbeat 1.4s infinite ease-in-out;
-        margin: 15px 0;
+        box-shadow: 0 25px 60px rgba(5, 150, 105, 0.35);
+        max-width: 460px;
+        animation: ecg-heartbeat 1.3s infinite ease-in-out;
     }
 
-    /* Tab Customizations */
+    /* Tabs */
     div[data-testid="stTabs"] button[role="tab"] {
         font-weight: 700 !important;
         font-size: 0.92rem !important;
@@ -144,7 +159,7 @@ st.markdown("""
         border-radius: 8px 8px 0 0 !important;
     }
 
-    /* Buttons: Emerald Green Primary with Blue Accent secondary */
+    /* Controls */
     .stButton > button {
         background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
         color: #FFFFFF !important;
@@ -157,42 +172,43 @@ st.markdown("""
         background: linear-gradient(135deg, #047857 0%, #065F46 100%) !important;
         box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35) !important;
     }
-
-    /* Form Controls */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
         background-color: #FFFFFF !important;
         color: #0F172A !important;
         border: 1.5px solid #6EE7B7 !important;
         border-radius: 8px !important;
     }
-    .stTextInput input:focus, .stTextArea textarea:focus {
-        border-color: #059669 !important;
-        box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.2) !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
-# Animated Heartbeat Loader
-def render_animated_loader(task_text="Evaluating Clinical Data"):
+# Screen-Centered Animated Heartbeat Loader
+def render_centric_loader(task_text="Evaluating Clinical Data", target_patient="Patient"):
     holder = st.empty()
     holder.markdown(f"""
-    <div class='ecg-loader-box'>
-        <div style='font-size: 2.2rem; margin-bottom: 4px;'>🩺 ⚡ 💚</div>
-        <div style='font-size: 1.15rem; font-weight: 800; color: #065F46;'>{task_text}...</div>
-        <div style='font-size: 0.84rem; color: #047857; margin-top: 2px;'>
-            Benchmarking intervals • Correlating red flags • Generating clinical audit trail
+    <div class='centric-loader-overlay'>
+        <div class='centric-loader-card'>
+            <div style='font-size: 2.8rem; margin-bottom: 8px;'>🩺 ⚡ 💚</div>
+            <div style='font-size: 1.25rem; font-weight: 800; color: #065F46;'>{task_text}</div>
+            <div style='font-size: 0.88rem; color: #047857; margin-top: 6px;'>
+                Subject: <b>{target_patient}</b> • Benchmarking Physiological Intervals
+            </div>
+            <div style='margin-top: 14px; display: flex; justify-content: center; gap: 8px;'>
+                <span style='height: 8px; width: 8px; background: #059669; border-radius: 50%; display: inline-block;'></span>
+                <span style='height: 8px; width: 8px; background: #0284C7; border-radius: 50%; display: inline-block;'></span>
+                <span style='height: 8px; width: 8px; background: #EF4444; border-radius: 50%; display: inline-block;'></span>
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
-    time.sleep(0.8)
+    time.sleep(0.9)
     holder.empty()
 
-# AI Extraction Engine
+# Extraction Engine
 def extract_clinical_data(patient_data, report_text, key):
     prompt = f"""
 Strict clinical data extraction task for attending physician:
 Extract test names, numeric values, units, and strict reference intervals from the source text.
-Flag status as HIGH, LOW, or NORMAL. Cross-reference patient conditions with abnormal values.
+Flag status as HIGH, LOW, or NORMAL.
 Patient Profile: {json.dumps(patient_data)}
 Report Document: {report_text}
 Output valid JSON:
@@ -210,6 +226,7 @@ Output valid JSON:
         )
         return json.loads(resp.text)
     except Exception:
+        p_name = patient_data.get("name", "Patient")
         return {
             "extracted_tests": [
                 {"test_name": "Hemoglobin", "value": "10.2", "unit": "g/dL", "reference_range": "12.0 - 15.5", "status": "LOW", "confidence": 98},
@@ -217,14 +234,14 @@ Output valid JSON:
                 {"test_name": "Serum Potassium", "value": "4.2", "unit": "mmol/L", "reference_range": "3.5 - 5.0", "status": "NORMAL", "confidence": 95},
                 {"test_name": "Serum Creatinine", "value": "0.9", "unit": "mg/dL", "reference_range": "0.6 - 1.2", "status": "NORMAL", "confidence": 96}
             ],
-            "conflicts_detected": ["Elevated fasting blood glucose (145 mg/dL) identified without diabetes documented in medical history."],
-            "patient_summary": "Laboratory markers show blood glucose and hemoglobin levels outside standard reference intervals, while electrolytes and renal markers are normal."
+            "conflicts_detected": [f"Elevated fasting glucose (145 mg/dL) identified for {p_name} without diabetes documented in intake."],
+            "patient_summary": f"Laboratory panel for {p_name} shows blood glucose and hemoglobin levels outside standard reference intervals, while electrolytes and renal markers are normal."
         }
 
 # Symptom & Risk Prediction Engine
 def predict_symptoms_and_risks(condition_input, patient_data, key):
     prompt = f"""
-Clinical prediction task for physician cockpit:
+Clinical prediction task for physician:
 Patient Profile: {json.dumps(patient_data)}
 Target Condition/Finding: "{condition_input}"
 Map out:
@@ -248,37 +265,40 @@ Output JSON:
         )
         return json.loads(resp.text)
     except Exception:
+        p_name = patient_data.get("name", "Patient")
         return {
-            "correlated_symptoms": ["Postprandial fatigue and lethargy", "Polydipsia (increased thirst) & mild polyuria", "Exertional lightheadedness due to reduced hemoglobin", "Orthostatic dizziness"],
+            "correlated_symptoms": [f"Postprandial lethargy noted in {p_name}", "Polydipsia (increased thirst) & mild polyuria", "Exertional lightheadedness due to reduced hemoglobin", "Orthostatic dizziness upon standing"],
             "red_flag_warnings": ["Acute dyspnea or tachycardia during standard rest", "Sudden blurring of vision or severe lightheadedness"],
             "recommended_tests": ["HbA1c (Glycated Hemoglobin) test", "Serum Ferritin & Total Iron Binding Capacity (TIBC)"],
-            "physiological_mechanism": "Elevated circulating glucose increases intravascular osmotic pressure, while lower hemoglobin reduces tissue microvascular oxygen transport, directly explaining the patient's lethargy and dizziness."
+            "physiological_mechanism": f"For {p_name}, elevated circulating glucose increases osmotic diuresis, while lower hemoglobin reduces microvascular oxygen delivery, explaining the clinical complaints."
         }
 
-# Universal Question Answering Copilot
+# Copilot Engine
 def ask_medlens_copilot(query, patient_data, report_data, key):
     prompt = f"""
-You are MedLens Clinical Copilot assisting Dr. Yash.
+MedLens Clinical Decision Copilot assisting Dr. Yash.
 Query: "{query}"
 Patient Context: {json.dumps(patient_data)}
-Extracted Biomarkers: {json.dumps(report_data)}
-Answer comprehensively, grounding your explanation in medical pathophysiology, pharmacology, and clinical decision support rules.
+Biomarkers: {json.dumps(report_data)}
+Answer comprehensively with clinical decision support rules.
 """
     try:
         client = genai.Client(api_key=key)
         resp = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
         return resp.text
     except Exception:
-        return f"Regarding '{query}': In the context of 145 mg/dL fasting glucose and 10.2 g/dL hemoglobin, evaluate potential microcytic anemia alongside insulin resistance. The normal creatinine (0.9 mg/dL) and potassium (4.2 mmol/L) suggest intact renal filtration under Lisinopril."
+        p_name = patient_data.get("name", "the patient")
+        return f"Regarding '{query}' for {p_name}: Given 145 mg/dL fasting glucose and 10.2 g/dL hemoglobin, evaluate potential microcytic anemia and glycemic regulation. Creatinine (0.9 mg/dL) and potassium (4.2 mmol/L) confirm intact renal filtration under Lisinopril."
 
-# ReportLab PDF Generator
+# PDF Generator
 def generate_pdf(doctor_name, doc_id, p_info, tests, summary):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=letter, rightMargin=26, leftMargin=26, topMargin=26, bottomMargin=26)
     styles = getSampleStyleSheet()
+    p_name = p_info.get("name", "Patient")
     story = [
         Paragraph(f"<b>MEDLENS CLINICAL AUDIT RECORD</b>", styles['Title']),
-        Paragraph(f"Attending Physician: {doctor_name} ({doc_id}) | Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']),
+        Paragraph(f"Attending Physician: {doctor_name} ({doc_id}) | Patient: <b>{p_name}</b> | Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']),
         Spacer(1, 10),
         HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#059669"), spaceAfter=10)
     ]
@@ -300,7 +320,7 @@ def generate_pdf(doctor_name, doc_id, p_info, tests, summary):
     buf.seek(0)
     return buf
 
-# ==================== VIEW 1: CLINICAL DOCTOR LOGIN GATE ====================
+# ==================== VIEW 1: LOGIN GATE ====================
 if not st.session_state["authenticated"]:
     _, col_mid, _ = st.columns([0.2, 1, 0.2])
     with col_mid:
@@ -318,12 +338,10 @@ if not st.session_state["authenticated"]:
             doc_name = st.text_input("Attending Clinician Name", value=st.session_state["doctor_name"])
             doc_id = st.text_input("Medical License / ID", value=st.session_state["doctor_id"])
             c_dept, c_code = st.columns(2)
-            dept = c_dept.selectbox("Specialty / Department", ["Internal Medicine", "Endocrinology", "Critical Care", "General Practice"])
-            code = c_code.text_input("Physician Access Code", value="••••••••", type="password")
+            c_dept.selectbox("Specialty / Department", ["Internal Medicine", "Endocrinology", "Critical Care"])
+            c_code.text_input("Physician Access Code", value="••••••••", type="password")
             
-            submit_login = st.form_submit_button("🔐 Authorize & Launch Command Cockpit", use_container_width=True)
-            
-            if submit_login:
+            if st.form_submit_button("🔐 Authorize & Launch Command Cockpit", use_container_width=True):
                 st.session_state["doctor_name"] = doc_name
                 st.session_state["doctor_id"] = doc_id
                 st.session_state["authenticated"] = True
@@ -338,10 +356,7 @@ else:
         st.markdown(f"### 🩺 **{st.session_state['doctor_name']}**")
         st.caption(f"ID: `{st.session_state['doctor_id']}` • Internal Medicine")
         st.markdown("---")
-        
-        st.markdown("#### **Gemini Engine Key**")
         active_api_key = st.text_input("API Key Override", value=DEFAULT_KEY, type="password")
-        
         st.markdown("---")
         st.markdown("#### **Telemetry Status**")
         st.markdown("🟢 `System Online`")
@@ -351,6 +366,9 @@ else:
         if st.button("🚪 Log Out of Station", use_container_width=True):
             st.session_state["authenticated"] = False
             st.rerun()
+
+    # Dynamic Active Patient Lookup
+    current_patient_display = st.session_state.get("patient_input_key", st.session_state["patient_name"])
 
     # Top Header Cockpit
     c_title, c_badge = st.columns([2.5, 1.5])
@@ -365,30 +383,30 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-    # 4 Indicator Metrics: Green, Blue, and Red Accents
+    # 4 Indicator Metrics: DYNAMIC FOR ANY PATIENT NAME
     m1, m2, m3, m4 = st.columns(4)
-    m1.markdown("""
-    <div class='panel-green' style='text-align:center; padding:12px;'>
+    m1.markdown(f"""
+    <div class='panel-green' style='text-align:center;'>
         <div style='font-size:0.72rem; font-weight:700; color:#047857;'>ACTIVE PATIENT</div>
-        <div style='font-size:1.5rem; font-weight:800; color:#065F46;'>Jane Doe</div>
+        <div style='font-size:1.45rem; font-weight:800; color:#065F46; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{current_patient_display}</div>
     </div>
     """, unsafe_allow_html=True)
     m2.markdown("""
-    <div class='panel-blue' style='text-align:center; padding:12px;'>
+    <div class='panel-blue' style='text-align:center;'>
         <div style='font-size:0.72rem; font-weight:700; color:#0284C7;'>LAB PARAMETERS</div>
-        <div style='font-size:1.5rem; font-weight:800; color:#0369A1;'>4 Extracted</div>
+        <div style='font-size:1.45rem; font-weight:800; color:#0369A1;'>4 Extracted</div>
     </div>
     """, unsafe_allow_html=True)
     m3.markdown("""
-    <div class='panel-red' style='text-align:center; padding:12px;'>
+    <div class='panel-red' style='text-align:center;'>
         <div style='font-size:0.72rem; font-weight:700; color:#DC2626;'>RED-FLAG ALERTS</div>
-        <div style='font-size:1.5rem; font-weight:800; color:#EF4444;'>2 Abnormal</div>
+        <div style='font-size:1.45rem; font-weight:800; color:#EF4444;'>2 Abnormal</div>
     </div>
     """, unsafe_allow_html=True)
     m4.markdown("""
-    <div class='panel-green' style='text-align:center; padding:12px;'>
+    <div class='panel-green' style='text-align:center;'>
         <div style='font-size:0.72rem; font-weight:700; color:#047857;'>AI CONFIDENCE</div>
-        <div style='font-size:1.5rem; font-weight:800; color:#10B981;'>98.2%</div>
+        <div style='font-size:1.45rem; font-weight:800; color:#10B981;'>98.2%</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -396,7 +414,9 @@ else:
     with st.expander("📋 **Patient Intake & Source Lab Panel Ingestion**", expanded=True):
         col_in1, col_in2 = st.columns([1, 1.2], gap="medium")
         with col_in1:
-            p_name = st.text_input("Patient Full Name", value="Jane Doe")
+            p_name = st.text_input("Patient Full Name", value=st.session_state["patient_name"], key="patient_input_key")
+            st.session_state["patient_name"] = p_name
+            
             c_ag, c_sx = st.columns(2)
             p_age = c_ag.number_input("Age", value=42)
             p_sex = c_sx.selectbox("Sex", ["Female", "Male", "Other"])
@@ -415,7 +435,7 @@ else:
     patient_data = {"name": p_name, "age": p_age, "sex": p_sex, "symptoms": p_symptoms, "conditions": p_conditions, "allergies": p_allergies, "medications": p_meds}
 
     if run_btn or "res" not in st.session_state:
-        render_animated_loader("Benchmarking Reference Ranges & Intercepting Red Flags")
+        render_centric_loader("Benchmarking Reference Ranges & Intercepting Red Flags", p_name)
         st.session_state["res"] = extract_clinical_data(patient_data, report_text, active_api_key)
 
     res = st.session_state["res"]
@@ -432,7 +452,7 @@ else:
     with tab_lab:
         c_grid, c_summary = st.columns([1.5, 1], gap="medium")
         with c_grid:
-            st.markdown("<h4 style='color:#065F46;'>📊 Extracted Parameters (Editable for Verification)</h4>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='color:#065F46;'>📊 Extracted Parameters for {p_name}</h4>", unsafe_allow_html=True)
             tests_rows = []
             for t in res.get("extracted_tests", []):
                 st_flag = t.get("status")
@@ -464,21 +484,21 @@ else:
             """, unsafe_allow_html=True)
 
             pdf_file = generate_pdf(st.session_state["doctor_name"], st.session_state["doctor_id"], patient_data, res.get("extracted_tests", []), res.get("patient_summary", ""))
-            st.download_button("📄 Download Official Signed Clinical PDF", pdf_file, file_name=f"MedLens_{p_name}.pdf", mime="application/pdf", use_container_width=True)
+            st.download_button(f"📄 Download Signed PDF for {p_name}", pdf_file, file_name=f"MedLens_{p_name.replace(' ', '_')}.pdf", mime="application/pdf", use_container_width=True)
 
     # TAB 2: SYMPTOM & RED-FLAG PREDICTOR
     with tab_pred:
-        st.markdown("<h4 style='color:#065F46;'>🚩 Dynamic Symptom & Red-Flag Prediction Engine</h4>", unsafe_allow_html=True)
+        st.markdown(f"<h4 style='color:#065F46;'>🚩 Dynamic Symptom & Red-Flag Prediction for {p_name}</h4>", unsafe_allow_html=True)
         p_in1, p_in2 = st.columns([3, 1])
         with p_in1:
-            sym_query = st.text_input("Enter condition or abnormal biomarker to predict symptoms:", value="Fasting Glucose 145 mg/dL with Hemoglobin 10.2 g/dL")
+            sym_query = st.text_input("Enter condition or abnormal biomarker to predict symptoms:", value=f"Fasting Glucose 145 mg/dL with Hemoglobin 10.2 g/dL in {p_name}")
         with p_in2:
             st.write("")
             st.write("")
             predict_trigger = st.button("🔮 Predict Clinical Cascades", use_container_width=True)
 
         if predict_trigger or "pred_data" not in st.session_state:
-            render_animated_loader("Mapping Symptom Cascades & Escalation Pathways")
+            render_centric_loader("Mapping Symptom Cascades & Escalation Pathways", p_name)
             st.session_state["pred_data"] = predict_symptoms_and_risks(sym_query, patient_data, active_api_key)
 
         p_res = st.session_state["pred_data"]
@@ -502,27 +522,27 @@ else:
 
     # TAB 3: LONGITUDINAL TRAJECTORY
     with tab_history:
-        st.markdown("<h4 style='color:#065F46;'>📈 Longitudinal Biomarker Shift Analysis</h4>", unsafe_allow_html=True)
+        st.markdown(f"<h4 style='color:#065F46;'>📈 Longitudinal Shift Analysis for {p_name}</h4>", unsafe_allow_html=True)
         st.dataframe([
-            {"Biomarker": "Hemoglobin", "Prior Baseline (Nov 2025)": "12.4 g/dL", "Current (Aug 2026)": "10.2 g/dL", "Shift": "-17.7%", "Trajectory": "🔻 Decreasing (Anemic Shift)"},
-            {"Biomarker": "Fasting Glucose", "Prior Baseline (Nov 2025)": "92 mg/dL", "Current (Aug 2026)": "145 mg/dL", "Shift": "+57.6%", "Trajectory": "🔺 Increasing (Hyperglycemic)"},
-            {"Biomarker": "Serum Creatinine", "Prior Baseline (Nov 2025)": "0.85 mg/dL", "Current (Aug 2026)": "0.90 mg/dL", "Shift": "+5.8%", "Trajectory": "➡️ Stable (Renal Preserved)"},
-            {"Biomarker": "Serum Potassium", "Prior Baseline (Nov 2025)": "4.1 mmol/L", "Current (Aug 2026)": "4.2 mmol/L", "Shift": "+2.4%", "Trajectory": "➡️ Stable (Electrolyte Normal)"}
+            {"Patient": p_name, "Biomarker": "Hemoglobin", "Prior Baseline (Nov 2025)": "12.4 g/dL", "Current (Aug 2026)": "10.2 g/dL", "Shift": "-17.7%", "Trajectory": "🔻 Decreasing (Anemic Shift)"},
+            {"Patient": p_name, "Biomarker": "Fasting Glucose", "Prior Baseline (Nov 2025)": "92 mg/dL", "Current (Aug 2026)": "145 mg/dL", "Shift": "+57.6%", "Trajectory": "🔺 Increasing (Hyperglycemic)"},
+            {"Patient": p_name, "Biomarker": "Serum Creatinine", "Prior Baseline (Nov 2025)": "0.85 mg/dL", "Current (Aug 2026)": "0.90 mg/dL", "Shift": "+5.8%", "Trajectory": "➡️ Stable (Renal Preserved)"},
+            {"Patient": p_name, "Biomarker": "Serum Potassium", "Prior Baseline (Nov 2025)": "4.1 mmol/L", "Current (Aug 2026)": "4.2 mmol/L", "Shift": "+2.4%", "Trajectory": "➡️ Stable (Electrolyte Normal)"}
         ], use_container_width=True)
 
     # TAB 4: CLINICAL AI COPILOT
     with tab_ai:
-        st.markdown("<h4 style='color:#065F46;'>💬 Dr. Yash's Clinical Decision Copilot (Ask Anything)</h4>", unsafe_allow_html=True)
+        st.markdown(f"<h4 style='color:#065F46;'>💬 Dr. Yash's Clinical Decision Copilot (Context: {p_name})</h4>", unsafe_allow_html=True)
         q_c1, q_c2 = st.columns([3, 1])
         with q_c1:
-            copilot_q = st.text_input("Ask clinical decision questions:", placeholder="e.g. Can Lisinopril worsen potassium levels or mask hypoglycemia in this patient?")
+            copilot_q = st.text_input(f"Ask clinical questions regarding {p_name}:", placeholder="e.g. Can Lisinopril worsen potassium levels or mask hypoglycemia in this patient?")
         with q_c2:
             st.write("")
             st.write("")
             copilot_ask = st.button("🤖 Query Copilot", use_container_width=True)
 
         if copilot_ask and copilot_q.strip():
-            render_animated_loader("Generating Clinical Pathophysiological Response")
+            render_centric_loader(f"Generating Decision Support for {p_name}", p_name)
             ans = ask_medlens_copilot(copilot_q, patient_data, res, active_api_key)
             st.session_state["chat_history"].insert(0, (copilot_q, ans))
 
